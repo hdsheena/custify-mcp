@@ -31,7 +31,7 @@ interface FormatTaskOptions {
 }
 
 function formatTask(t: Task, opts: FormatTaskOptions = {}) {
-  const includeDescription = opts.includeDescription ?? false;
+  const includeDescription = opts.includeDescription ?? true;
   const plaintextDescription = opts.plaintextDescription ?? true;
   const descriptionMaxChars = opts.descriptionMaxChars ?? 0;
 
@@ -109,10 +109,10 @@ export function registerTaskTools(server: McpServer, client: CustifyClient): voi
   // list_tasks
   server.tool(
     'list_tasks',
-    `List Custify tasks. By default, descriptions are omitted to keep payloads compact — set include_description=true to include them (as plain text by default), or use get_task for the full description of a single task. Filters can be combined (AND). Common queries:
+    `List Custify tasks. Descriptions are included as plain text by default (HTML stripped). Set include_description=false to omit them for minimal payloads, or use get_task for the full raw HTML of a single task. Filters can be combined (AND). Common queries:
 - My open tasks: {"assignee_id":"<user_id>","status":"open"}
 - Overdue for an account: {"account_id":"<account_id>","status":"overdue"}
-- With descriptions (truncated): {"include_description":true,"description_max_chars":500}
+- Compact (no descriptions): {"include_description":false}
 Use list_tags (category="task") to resolve tag names → IDs. Use list_task_filter_values to discover assignee, account, and creator IDs.`,
     {
       assignee_id: z.string().optional().describe('Custify user ID assigned to the task'),
@@ -134,8 +134,8 @@ Use list_tags (category="task") to resolve tag names → IDs. Use list_task_filt
       sort_direction: z.enum(['asc', 'desc']).default('asc').optional().describe('Sort direction (default: asc)'),
       limit: z.number().min(1).max(50).default(25).optional().describe('Number of results (1-50, default 25). Backend caps at 50 per page.'),
       offset: z.number().min(0).default(0).optional().describe('Pagination offset (default 0)'),
-      include_description: z.boolean().default(false).optional().describe(
-        'Include task descriptions in the response. Default false — descriptions are omitted to keep payloads compact. Use get_task to retrieve the full description of a specific task.'
+      include_description: z.boolean().default(true).optional().describe(
+        'Include task descriptions in the response (as plain text by default). Set false to omit descriptions for minimal payloads. Use get_task for the full raw HTML description of a specific task.'
       ),
       plaintext_description: z.boolean().default(true).optional().describe(
         'When include_description is true, strip HTML tags and return plain text. Default true.'
@@ -162,7 +162,7 @@ Use list_tags (category="task") to resolve tag names → IDs. Use list_task_filt
         );
 
         const formatOpts: FormatTaskOptions = {
-          includeDescription: params.include_description ?? false,
+          includeDescription: params.include_description ?? true,
           plaintextDescription: params.plaintext_description ?? true,
           descriptionMaxChars: params.description_max_chars ?? 0,
         };
